@@ -1,0 +1,34 @@
+package Game;
+public class Bullet extends Entity {
+  private Game game;
+  private boolean bulletHit=false;
+  
+  public Bullet(Game gameCreate,String spriteString,int x,int y) {
+    super(spriteString,x,y);
+    game=gameCreate;
+  }
+  
+  public void move(){
+    if (x>1024||x<0) {
+      game.removeEntity(this);
+    }
+    x += velX;
+  }
+   public void collisionWith(Entity collidedEntity) {
+     if (!bulletHit) {
+     if (collidedEntity instanceof Spaceship1) {
+       --game.p1Lives;
+       bulletHit = true;
+       game.removeEntity(this);
+     } else if (collidedEntity instanceof Spaceship2) {
+       --game.p2Lives;
+       bulletHit = true;
+       game.removeEntity(this);
+     }
+    }
+     if (game.p1Lives == 0 || game.p2Lives == 0) {
+       game.playGame = 2;
+     }
+}
+}
+    

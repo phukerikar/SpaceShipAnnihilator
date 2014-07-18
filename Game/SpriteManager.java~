@@ -1,0 +1,52 @@
+package Game;
+import java.awt.GraphicsConfiguration;
+import java.awt.GraphicsEnvironment;
+import java.awt.Image;
+import java.awt.Transparency;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URL;
+import java.util.HashMap;
+import javax.imageio.ImageIO;
+//manages all sprites in the game and caches them for future use
+public class SpriteManager {
+  //create single instance of class
+  private static SpriteManager singleSpriteManager = new SpriteManager();
+  //get single instance
+  public static SpriteManager get() {
+    return singleSpriteManager;
+  }
+  //cached sprite map
+  private HashMap<String,Sprite> sprites = new HashMap<String,Sprite>();
+  //retrieve sprite using the reference to the image, return type of object Sprite
+  public Sprite getSprite(String reference) {
+    //if sprite is cached, then return cached sprite
+    if (sprites.get(reference) != null) {
+      return (Sprite) sprites.get(reference);
+    }
+    //Use ClassLoader.getResource() to get the sprite instead of file look up, as it is easier
+    BufferedImage source = null;
+    try {
+      URL url = getClass().getClassLoader().getResource(reference);
+      if (url == null) {
+        fail("Reference not found: " + reference);
+      }
+      source = ImageIO.read(url);
+    } catch (IOException e) {
+      fail("Couldn't load image: " + reference);
+    }
+    GraphicsConfiguration graphicsconfig = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration();
+    Image image = graphicsconfig.createCompatibleImage(source.getWidth(),source.getHeight(),Transparency.BITMASK);
+    //source BufferedImage into image
+    image.getGraphics().drawImage(source,0,0,null);
+    //create a sprite object with image and put it into cache
+    Sprite sprite = new Sprite(image);
+    sprites.put(reference,sprite);
+    return sprite;
+  }
+  private void fail(String errorMessage) {
+    System.err.println(errorMessage);
+    System.exit(0);
+  }
+}
+      

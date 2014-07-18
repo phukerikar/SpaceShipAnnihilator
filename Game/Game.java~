@@ -1,0 +1,270 @@
+package Game;
+import java.awt.Canvas;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferStrategy;
+import java.util.ArrayList;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
+import java.awt.Font;
+import java.io.File;
+import java.lang.Exception;
+import java.lang.String;
+
+public class Game extends Canvas {
+  final static private double msPerFrame = 1000/60;
+  private BufferStrategy bufferStrategy;
+  private Sprite bg;
+  private long sleepMs = 0;
+  private long lastUpdate = 0;
+  private boolean isRunning = true;
+  private ArrayList<Entity> allEntities = new ArrayList<Entity>();
+  private ArrayList<Entity> removeEntities = new ArrayList<Entity>();
+  
+  private Spaceship1 ss1;
+  private Spaceship2 ss2;
+  
+  private Graphics2D graphicsContext;
+  //how often player can shoot a bullet
+  private long timeLastShotFired1 = 0, timeLastShotFired2 = 0;
+  private int shotInterval1 = 189, shotInterval2 = 270;
+  
+  //0 - left 1 - right 2 - down 3 - up
+  private boolean player1Arrow[] = new boolean[4];
+  private boolean player2Arrow[] = new boolean[4];
+  
+  public int playGame = 0;
+  private static Font font = null;
+  public int p1Lives = 4;
+  public int p2Lives = 4;
+  
+  public Game() {
+    JFrame jFrame = new JFrame("SpaceShip Annihilator");
+    JPanel jPanel = (JPanel)jFrame.getContentPane();
+    jPanel.setPreferredSize(new Dimension(1024,768));
+    jPanel.setLayout(null);
+    setBounds(0,0,1024,768);
+    jPanel.add(this);
+    setIgnoreRepaint(true);
+    jFrame.pack();
+    jFrame.setResizable(false);
+    jFrame.setVisible(true);
+    jFrame.addWindowListener(new WindowAdapter() {
+      public void windowClosing(WindowEvent e) {
+        System.exit(0);
+      }
+    });
+    addKeyListener(new KeyInputHandler());
+    requestFocus();
+    createBufferStrategy(2);
+    bufferStrategy = getBufferStrategy();
+  }
+  private void startGame() {
+    allEntities.clear();
+    player1Arrow[0] = false;
+    player1Arrow[1] = false;
+    player1Arrow[2] = false;
+    player1Arrow[3] = false;
+    player2Arrow[0] = false;
+    player2Arrow[1] = false;
+    player2Arrow[2] = false;
+    player2Arrow[3] = false;
+    ss1 = new Spaceship1(this,800,400);
+    ss1.setHorizontalVelocity(7);
+    ss1.setVerticalVelocity(4);
+    allEntities.add(ss1);
+    ss2 = new Spaceship2(this,100,400);
+    ss2.setHorizontalVelocity(4);
+    ss2.setVerticalVelocity(9);
+    allEntities.add(ss2);
+    p1Lives = 4;
+    p2Lives = 4;
+  }
+  private void createBullet(boolean player) {
+    if (!player) {
+      if((System.currentTimeMillis() - timeLastShotFired2) < shotInterval2) {
+        return;
+      }
+      timeLastShotFired2 = System.currentTimeMillis();
+      Bullet bullet = new Bullet(this,"Sprites/bullet.png",ss1.getX()-10,ss1.getY()+30);
+      bullet.setHorizontalVelocity(-8);
+      allEntities.add(bullet);
+    } else if (player) {
+      if((System.currentTimeMillis() - timeLastShotFired1) < shotInterval1) {
+        return;
+      }
+      timeLastShotFired1 = System.currentTimeMillis();
+      Bullet bullet = new Bullet(this,"Sprites/bullet.png",ss2.getX()+85,ss2.getY()+40);
+      bullet.setHorizontalVelocity(5);
+      allEntities.add(bullet);
+    }
+  }
+  public void removeEntity(Entity entity) {
+    removeEntities.add(entity);
+  }
+  public static Font loadFont() {
+    if (font != null) {
+      return font;
+    }
+    try {
+      File fileFont = new File("fonts/diablo.TTF");
+      font = Font.createFont(Font.TRUETYPE_FONT, fileFont).deriveFont(32f);
+    } catch (Exception e) {
+      System.err.println("Cannot load Diablo font");
+      System.exit(0);
+    }
+    return font;
+  }
+  public void gameLoop() {
+    long loopTime = System.currentTimeMillis();
+    long gameTick = System.currentTimeMillis();
+    bg = SpriteManager.get().getSprite("Sprites/bg2.png");
+    while (isRunning) {
+      lastUpdate = System.currentTimeMillis() - loopTime;
+      loopTime = System.currentTimeMillis();
+      graphicsContext = (Graphics2D)bufferStrategy.getDrawGraphics();
+      bg.draw(graphicsContext,0,0);
+      graphicsContext.setColor(Color.orange);
+      graphicsContext.setFont(loadFont());
+      if (playGame == 0) {
+        graphicsContext.drawString("Press F4 to play!",367,350);
+      } else if(playGame == 1) {
+        graphicsContext.drawString("P1 Lives",680,50);
+        graphicsContext.drawString(Integer.toString(p1Lives),850,50);
+        graphicsContext.drawString("P2 Lives",280,50);
+        graphicsContext.drawString(Integer.toString(p2Lives),450,50);
+        for (int i = 0;i < allEntities.size();++i) {
+          Entity e = (Entity)allEntities.get(i);
+          if (e instanceof Bullet) {
+          e.move();
+          }
+        }
+        if (player1Arrow[0] == true) {
+          ss1.left();
+        } else if (player1Arrow[1] == true) {
+          ss1.right();
+        }
+        if (player1Arrow[2] == true) {
+          ss1.down();
+        } else if (player1Arrow[3] == true) {
+          ss1.up();
+        }
+        if (player2Arrow[0] == true) {
+          ss2.left();
+        } else if (player2Arrow[1] == true) {
+          ss2.right();
+        }
+        if (player2Arrow[2] == true) {
+          ss2.down();
+        } else if (player2Arrow[3] == true) {
+          ss2.up();
+        }
+        for (int i = 0;i < allEntities.size();++i) {
+          Entity entity = (Entity)allEntities.get(i);
+          entity.draw(graphicsContext);
+        }
+        for (int i = 0;i < allEntities.size();++i) {
+          for (int j = 1;j < allEntities.size();++j) {
+            Entity first = (Entity)allEntities.get(i);
+            Entity second = (Entity)allEntities.get(j);
+            if (first.collisionDetection(second)) {
+              first.collisionWith(second);
+              second.collisionWith(first);
+            }
+          }
+        }
+        allEntities.removeAll(removeEntities);
+        removeEntities.clear();
+      } else if (p1Lives == 0 && playGame == 2) {
+        graphicsContext.drawString("P2 Wins",367,350);
+        graphicsContext.drawString("Press F4 to play again!",367,450);
+      } else if (p2Lives == 0 && playGame == 2) {
+        graphicsContext.drawString("P1 Wins",367,350);
+        graphicsContext.drawString("Press F4 to play again!",367,450);
+      }
+      graphicsContext.dispose();
+      bufferStrategy.show();
+      gameTick += msPerFrame;
+      sleepMs = gameTick - System.currentTimeMillis();
+      if (sleepMs > 0) {
+        try { Thread.sleep(sleepMs);} catch (Exception e) {}
+      }
+    }
+  }
+  private class KeyInputHandler extends KeyAdapter {
+    public void keyPressed(KeyEvent e) {
+      if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+        player1Arrow[0] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_A) {
+        player2Arrow[0] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+        player1Arrow[1] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_D) {
+        player2Arrow[1] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_UP) {
+        player1Arrow[3] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_W) {
+        player2Arrow[3] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+        player1Arrow[2] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_S) {
+        player2Arrow[2] = true;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_F4) {
+        startGame();
+        playGame = 1;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_CONTROL) {
+        createBullet(false);
+      }
+      if (e.getKeyCode() == KeyEvent.VK_SPACE) {
+        createBullet(true);
+      }
+    }
+    public void keyReleased(KeyEvent e) {
+      if (e.getKeyCode() == KeyEvent.VK_LEFT) {
+        player1Arrow[0] = false;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_A) {
+        player2Arrow[0] = false;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
+        player1Arrow[1] = false;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_D) {
+        player2Arrow[1] = false;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_UP) {
+        player1Arrow[3] = false;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_W) {
+        player2Arrow[3] = false;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_DOWN) {
+        player1Arrow[2] = false;
+      }
+      if (e.getKeyCode() == KeyEvent.VK_S) {
+        player2Arrow[2] = false;
+      }
+    }
+  }
+  public static void main(String[] args) {
+    Game g = new Game();
+    g.gameLoop();
+  }
+}
+  
+  
+  
